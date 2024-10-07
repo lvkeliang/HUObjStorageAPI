@@ -1,0 +1,1 @@
+curl -X PUT "127.0.0.1:9200/metadata" -H "Content-Type: application/json" -d '{"mappings":{"properties":{"name":{"type":"string","index":"not_analyzed"},"version":{"type":"integer"},"size":{"type":"integer"},"hash":{"type":"string"}}}}'

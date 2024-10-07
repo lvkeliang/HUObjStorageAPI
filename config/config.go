@@ -17,6 +17,9 @@ type Config struct {
 	Rabbitmq      struct {
 		RabbitmqServer string `json:"rabbitmq_server"`
 	} `json:"rabbitmq"`
+	Elasticsearch struct {
+		EsServer string `json:"es_server"`
+	} `json:"elasticsearch"`
 }
 
 // DefaultConfig 返回默认的配置
@@ -28,6 +31,11 @@ func DefaultConfig() Config {
 			RabbitmqServer string `json:"rabbitmq_server"`
 		}{
 			RabbitmqServer: "amqp://guest:guest@127.0.0.1:5672/",
+		},
+		Elasticsearch: struct {
+			EsServer string `json:"es_server"`
+		}{
+			EsServer: "127.0.0.1:9200",
 		},
 	}
 }

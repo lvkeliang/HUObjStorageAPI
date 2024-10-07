@@ -11,13 +11,13 @@ type PutStream struct {
 	ch     chan error
 }
 
-func NewPutStream(server, objectName string) *PutStream {
+func NewPutStream(server, object string) *PutStream {
 	reader, writer := io.Pipe()
 	ch := make(chan error)
 	go func() {
 		request, err := http.NewRequest(
 			"PUT",
-			"http://"+server+"/objects/"+objectName,
+			"http://"+server+"/objects/"+object,
 			reader,
 		)
 		if err != nil {

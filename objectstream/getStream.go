@@ -22,11 +22,11 @@ func newGetStream(url string) (*GetStream, error) {
 	return &GetStream{r.Body}, nil
 }
 
-func NewGetStream(server, objectName string) (*GetStream, error) {
-	if server == "" || objectName == "" {
-		return nil, fmt.Errorf("invalid server %s object %s", server, objectName)
+func NewGetStream(server, object string) (*GetStream, error) {
+	if server == "" || object == "" {
+		return nil, fmt.Errorf("invalid server %s object %s", server, object)
 	}
-	return newGetStream("http://" + server + "/objects/" + objectName)
+	return newGetStream("http://" + server + "/objects/" + object)
 }
 
 func (r *GetStream) Read(p []byte) (n int, err error) {
