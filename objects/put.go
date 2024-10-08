@@ -3,7 +3,9 @@ package objects
 import (
 	"HUObjStorageAPI/es"
 	"HUObjStorageAPI/heartbeat"
+	"HUObjStorageAPI/locate"
 	"HUObjStorageAPI/objectstream"
+	"HUObjStorageAPI/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -43,7 +45,7 @@ func Put(c *gin.Context) {
 		return
 	}
 
-	status, err := storeObject(c.Request.Body, url.PathEscape(hash))
+	status, err := storeObject(c.Request.Body, url.PathEscape(hash), size)
 	if err != nil {
 		log.Println(err)
 		c.JSON(status, gin.H{"info": "store object failed"})
@@ -64,26 +66,37 @@ func Put(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"info": "success"})
 }
 
-func storeObject(r io.Reader, objectName string) (int, error) {
-	stream, err := putStream(objectName)
-	if err != nil {
-		return http.StatusServiceUnavailable, err
+func storeObject(r io.Reader, hash string, size int64) (int, error) {
+	if locate.Exist(url.PathEscape(hash)) {
+		return http.StatusOK, nil
 	}
 
-	io.Copy(stream, r)
-	err = stream.Close()
+	stream, err := putStream(url.PathEscape(hash), size)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 
+	reader := io.TeeReader(r, stream)
+
+	// 从reader读数据时, 会同时读取r给reader并且写入到stream
+	// 这里是实现传输给数据服务, 完成后计算hash
+	d := util.CalculateHash(reader)
+	if d != hash {
+		// 哈希不对, 使用Commit把临时数据删除
+		stream.Commit(false)
+		return http.StatusBadRequest, fmt.Errorf("object hash mismatch, calculated=%s, requested=%s", d, hash)
+	}
+
+	// 将临时数据转正
+	stream.Commit(true)
 	return http.StatusOK, nil
 }
 
-func putStream(objectName string) (*objectstream.PutStream, error) {
+func putStream(hash string, size int64) (*objectstream.TempPutStream, error) {
 	server := heartbeat.ChooseRandomDataServer()
 	if server == "" {
 		return nil, fmt.Errorf("cannot find any dataServer")
 	}
 
-	return objectstream.NewPutStream(server, objectName), nil
+	return objectstream.NewTempPutStream(server, hash, size)
 }
