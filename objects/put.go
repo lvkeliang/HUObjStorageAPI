@@ -30,9 +30,6 @@ func Put(c *gin.Context) {
 	hash := GetHash(c.GetHeader("digest"))
 	size, err := strconv.ParseInt(c.GetHeader("content-length"), 0, 64)
 
-	//fmt.Println(c.GetHeader("digest"))
-	//fmt.Println(c.GetHeader("content-length"))
-
 	if size <= 0 || err != nil {
 		log.Println("size header invalid")
 		c.JSON(http.StatusBadRequest, gin.H{"info": "missing object hash in digest header"})

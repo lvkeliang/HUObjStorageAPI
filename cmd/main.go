@@ -7,9 +7,11 @@ import (
 )
 
 func main() {
+
 	config.Init()
 
 	go heartbeat.ListenHeartbeat()
 
 	api.InitRouter()
+
 }
