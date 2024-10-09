@@ -1,8 +1,10 @@
 package objectstream
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -53,6 +55,12 @@ type TempPutStream struct {
 	Uuid   string
 }
 
+// 定义结构体来解析 POST 的 JSON 响应
+type PostResponseData struct {
+	Info string `json:"info"`
+	UUID string `json:"uuid"`
+}
+
 func NewTempPutStream(server, hash string, size int64) (*TempPutStream, error) {
 
 	request, err := http.NewRequest(
@@ -74,11 +82,21 @@ func NewTempPutStream(server, hash string, size int64) (*TempPutStream, error) {
 		return nil, err
 	}
 
-	uuid, err := io.ReadAll(response.Body)
+	// 读取响应体
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
+		log.Printf("读取响应体失败: %v", err)
 		return nil, err
 	}
-	return &TempPutStream{server, string(uuid)}, nil
+
+	// 将 JSON 响应解码到结构体中
+	var data PostResponseData
+	if err := json.Unmarshal(body, &data); err != nil {
+		log.Printf("解析 JSON 失败: %v", err)
+		return nil, err
+	}
+
+	return &TempPutStream{server, data.UUID}, nil
 }
 
 func (w *TempPutStream) Write(p []byte) (n int, err error) {

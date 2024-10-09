@@ -41,9 +41,9 @@ func Get(c *gin.Context) {
 		return
 	}
 
-	object := url.PathEscape(meta.Hash)
+	objectHash := url.PathEscape(meta.Hash)
 
-	stream, err := GetStream(object)
+	stream, err := GetStream(objectHash)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusNotFound, gin.H{"info": "resource not found"})
@@ -51,10 +51,10 @@ func Get(c *gin.Context) {
 	io.Copy(c.Writer, stream)
 }
 
-func GetStream(object string) (io.Reader, error) {
-	server := locate.Locate(object)
+func GetStream(objectHash string) (io.Reader, error) {
+	server := locate.Locate(objectHash)
 	if server == "" {
-		return nil, fmt.Errorf("object %s locate failed", object)
+		return nil, fmt.Errorf("object %s locate failed", objectHash)
 	}
-	return objectstream.NewGetStream(server, object)
+	return objectstream.NewGetStream(server, objectHash)
 }
