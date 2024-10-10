@@ -77,6 +77,7 @@ func NewTempPutStream(server, hash string, size int64) (*TempPutStream, error) {
 	client := http.Client{}
 
 	response, err := client.Do(request)
+	defer response.Body.Close() // 确保请求完成后关闭响应体
 
 	if err != nil {
 		return nil, err
@@ -119,7 +120,7 @@ func (w *TempPutStream) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (w *TempPutStream) Commit(good bool) {
+func (w *TempPutStream) Commit(good bool) error {
 	method := "DELETE"
 	if good {
 		method = "PUT"
@@ -131,5 +132,18 @@ func (w *TempPutStream) Commit(good bool) {
 	)
 
 	client := http.Client{}
-	client.Do(request)
+	response, err := client.Do(request)
+	if err != nil {
+		log.Printf("Failed to send %s request for %s to %s: %v", method, w.Uuid, w.Server, err)
+		return err
+	}
+	defer response.Body.Close()
+
+	// 检查响应状态码
+	if response.StatusCode != http.StatusOK {
+		log.Printf("Unexpected status code %d from %s request for %s to %s", response.StatusCode, method, w.Uuid, w.Server)
+		return fmt.Errorf("unexpected status code %d from %s request for %s to %s", response.StatusCode, method, w.Uuid, w.Server)
+	}
+
+	return nil
 }

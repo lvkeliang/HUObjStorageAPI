@@ -78,14 +78,21 @@ func storeObject(r io.Reader, hash string, size int64) (int, error) {
 	// 从reader读数据时, 会同时读取r给reader并且写入到stream
 	// 这里是实现传输给数据服务, 完成后计算hash
 	d := util.CalculateHash(reader)
+
 	if d != hash {
 		// 哈希不对, 使用Commit把临时数据删除
 		stream.Commit(false)
+		if err != nil {
+			return http.StatusInternalServerError, fmt.Errorf("object del failed")
+		}
 		return http.StatusBadRequest, fmt.Errorf("object hash mismatch, calculated=%s, requested=%s", d, hash)
 	}
 
 	// 将临时数据转正
-	stream.Commit(true)
+	err = stream.Commit(true)
+	if err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("object commit failed")
+	}
 	return http.StatusOK, nil
 }
 
