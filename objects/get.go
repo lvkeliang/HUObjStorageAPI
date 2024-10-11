@@ -2,8 +2,9 @@ package objects
 
 import (
 	"HUObjStorageAPI/es"
+	"HUObjStorageAPI/heartbeat"
 	"HUObjStorageAPI/locate"
-	"HUObjStorageAPI/objectstream"
+	"HUObjStorageAPI/rs"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -43,18 +44,30 @@ func Get(c *gin.Context) {
 
 	objectHash := url.PathEscape(meta.Hash)
 
-	stream, err := GetStream(objectHash)
+	stream, err := GetStream(objectHash, meta.Size)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusNotFound, gin.H{"info": "resource not found"})
+		return
 	}
-	io.Copy(c.Writer, stream)
+	_, err = io.Copy(c.Writer, stream)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusNotFound, gin.H{"info": "resource not found"})
+		return
+	}
+	stream.Close()
 }
 
-func GetStream(objectHash string) (io.Reader, error) {
-	server := locate.Locate(objectHash)
-	if server == "" {
-		return nil, fmt.Errorf("object %s locate failed", objectHash)
+func GetStream(objectHash string, size int64) (*rs.RSGetStream, error) {
+	locateInfo := locate.Locate(objectHash)
+	if len(locateInfo) < rs.DATA_SHARDS {
+		return nil, fmt.Errorf("object %s locate failed, result %v", objectHash, locateInfo)
 	}
-	return objectstream.NewGetStream(server, objectHash)
+
+	dataServers := make([]string, 0)
+	if len(locateInfo) != rs.ALL_SHARDS {
+		dataServers = heartbeat.ChooseRandomDataServers(rs.ALL_SHARDS-len(locateInfo), locateInfo)
+	}
+	return rs.NewRSGetStream(locateInfo, dataServers, objectHash, size)
 }

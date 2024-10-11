@@ -4,7 +4,7 @@ import (
 	"HUObjStorageAPI/es"
 	"HUObjStorageAPI/heartbeat"
 	"HUObjStorageAPI/locate"
-	"HUObjStorageAPI/objectstream"
+	"HUObjStorageAPI/rs"
 	"HUObjStorageAPI/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -89,18 +89,18 @@ func storeObject(r io.Reader, hash string, size int64) (int, error) {
 	}
 
 	// 将临时数据转正
-	err = stream.Commit(true)
+	stream.Commit(true)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("object commit failed")
 	}
 	return http.StatusOK, nil
 }
 
-func putStream(hash string, size int64) (*objectstream.TempPutStream, error) {
-	server := heartbeat.ChooseRandomDataServer()
-	if server == "" {
-		return nil, fmt.Errorf("cannot find any dataServer")
+func putStream(hash string, size int64) (*rs.RSPutStream, error) {
+	servers := heartbeat.ChooseRandomDataServers(rs.ALL_SHARDS, nil)
+	if len(servers) != rs.ALL_SHARDS {
+		return nil, fmt.Errorf("cannot find enough dataServer")
 	}
 
-	return objectstream.NewTempPutStream(server, hash, size)
+	return rs.NewRSPutStream(servers, hash, size)
 }

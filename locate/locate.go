@@ -3,10 +3,11 @@ package locate
 import (
 	"HUObjStorageAPI/config"
 	"HUObjStorageAPI/rabbitmq"
+	"HUObjStorageAPI/rs"
+	"HUObjStorageAPI/types"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func Handler(c *gin.Context) {
 	c.Data(http.StatusOK, "application/json", b)
 }
 
-func Locate(name string) string {
+func Locate(name string) (locateInfo map[int]string) {
 	q := rabbitmq.New(config.Configs.Rabbitmq.RabbitmqServer)
 	q.Publish("dataServers", name)
 
@@ -39,11 +40,20 @@ func Locate(name string) string {
 		time.Sleep(time.Second)
 		q.Close()
 	}()
-	msg := <-c
-	s, _ := strconv.Unquote(string(msg.Body))
-	return s
+
+	locateInfo = make(map[int]string)
+	for i := 0; i < rs.ALL_SHARDS; i++ {
+		msg := <-c
+		if len(msg.Body) == 0 {
+			return
+		}
+		var info types.LocateMessage
+		json.Unmarshal(msg.Body, &info)
+		locateInfo[info.Id] = info.Addr
+	}
+	return
 }
 
 func Exist(name string) bool {
-	return Locate(name) != ""
+	return len(Locate(name)) >= rs.DATA_SHARDS
 }
