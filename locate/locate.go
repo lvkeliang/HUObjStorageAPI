@@ -13,7 +13,7 @@ import (
 
 func Handler(c *gin.Context) {
 
-	info := Locate(c.Param("name"))
+	info := Locate(c.Param("hash"))
 
 	if len(info) == 0 {
 		c.JSON(404, gin.H{"error": "File not found"})

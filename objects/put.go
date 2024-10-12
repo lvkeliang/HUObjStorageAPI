@@ -32,7 +32,7 @@ func Put(c *gin.Context) {
 
 	if size <= 0 || err != nil {
 		log.Println("size header invalid")
-		c.JSON(http.StatusBadRequest, gin.H{"info": "missing object hash in digest header"})
+		c.JSON(http.StatusBadRequest, gin.H{"info": "size header invalid"})
 		return
 	}
 

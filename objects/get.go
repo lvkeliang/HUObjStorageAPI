@@ -5,6 +5,7 @@ import (
 	"HUObjStorageAPI/heartbeat"
 	"HUObjStorageAPI/locate"
 	"HUObjStorageAPI/rs"
+	"HUObjStorageAPI/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -17,6 +18,7 @@ import (
 func Get(c *gin.Context) {
 	objectName := c.Param("name")
 	versionID := c.Query("version")
+	offset := util.GetOffset(c.GetHeader("range"))
 
 	version := 0
 	var err error
@@ -50,6 +52,12 @@ func Get(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"info": "resource not found"})
 		return
 	}
+
+	if offset != 0 {
+		stream.Seek(offset, io.SeekCurrent)
+		c.JSON(http.StatusOK, gin.H{"info": "success", "content-range": fmt.Sprintf("bytes %d-%d/%d", offset, meta.Size-1, meta.Size)})
+	}
+
 	_, err = io.Copy(c.Writer, stream)
 	if err != nil {
 		log.Println(err)
