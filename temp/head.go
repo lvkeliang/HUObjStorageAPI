@@ -21,6 +21,7 @@ func Head(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"info": "resume file not found"})
 		return
 	}
+	//fmt.Println("HEAD: ", current)
 	c.Header("content-length", fmt.Sprintf("%d", current))
 	c.Status(http.StatusOK)
 }

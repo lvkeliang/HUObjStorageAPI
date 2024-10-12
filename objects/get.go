@@ -6,6 +6,7 @@ import (
 	"HUObjStorageAPI/locate"
 	"HUObjStorageAPI/rs"
 	"HUObjStorageAPI/util"
+	"compress/gzip"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 func Get(c *gin.Context) {
@@ -58,11 +60,24 @@ func Get(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"info": "success", "content-range": fmt.Sprintf("bytes %d-%d/%d", offset, meta.Size-1, meta.Size)})
 	}
 
-	_, err = io.Copy(c.Writer, stream)
-	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusNotFound, gin.H{"info": "resource not found"})
-		return
+	acceptGzip := false
+	encoding := c.GetHeader("Accept-Encoding")
+	if strings.Contains(encoding, "gzip") {
+		acceptGzip = true
+	}
+
+	if acceptGzip {
+		c.Header("content-encoding", "gzip")
+		gzipWriter := gzip.NewWriter(c.Writer)
+		_, err = io.Copy(gzipWriter, stream)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusNotFound, gin.H{"info": "resource not found"})
+			return
+		}
+		gzipWriter.Close()
+	} else {
+		io.Copy(c.Writer, stream)
 	}
 	stream.Close()
 }

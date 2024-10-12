@@ -5,6 +5,7 @@ import (
 	"HUObjStorageAPI/locate"
 	"HUObjStorageAPI/rs"
 	"HUObjStorageAPI/util"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
 	"log"
@@ -29,8 +30,9 @@ func Put(c *gin.Context) {
 	}
 
 	offset := util.GetOffset(c.GetHeader("range"))
+	//fmt.Println("range: ", c.GetHeader("range"), " offset:", offset, " need: ", current)
 	if current != offset {
-		c.JSON(http.StatusRequestedRangeNotSatisfiable, gin.H{"info": "range header invalid"})
+		c.JSON(http.StatusRequestedRangeNotSatisfiable, gin.H{"info": fmt.Sprintf("range header invalid: %d", offset)})
 		return
 	}
 
