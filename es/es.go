@@ -176,3 +176,73 @@ func SearchAllVersions(name string, from, size int) ([]Metadata, error) {
 
 	return metas, nil
 }
+
+type Bucket struct {
+	Key         string
+	Doc_count   int
+	Min_version struct {
+		Value float32
+	}
+}
+
+type aggregateResult struct {
+	Aggregations struct {
+		Group_by_name struct {
+			Buckets []Bucket
+		}
+	}
+}
+
+func SearchVersionStatus(min_doc_count int) ([]Bucket, error) {
+	client := http.Client{}
+	addr := fmt.Sprintf("http://%s/metadata/_search", config.Configs.Elasticsearch.EsServer)
+
+	body := fmt.Sprintf(`{"size":0,"aggs":{"group_by_name":{"terms":{"field":"name","min_doc_count":%d},"aggs":{"min_version":{"min":{"field":"version"}}}}}}`, min_doc_count)
+	request, _ := http.NewRequest("GET", addr, strings.NewReader(body))
+	res, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	b, _ := io.ReadAll(res.Body)
+	var ar aggregateResult
+	json.Unmarshal(b, &ar)
+	return ar.Aggregations.Group_by_name.Buckets, nil
+}
+
+func DelMetadata(name string, version int) {
+	client := http.Client{}
+	addr := fmt.Sprintf("http://%s/metadata/_doc/%s_%d", config.Configs.Elasticsearch.EsServer, name, version)
+	request, _ := http.NewRequest("DELETE", addr, nil)
+	client.Do(request)
+}
+
+func HasHash(hash string) (bool, error) {
+	addr := fmt.Sprintf("http://%s/metadata/_search?q=hash:%s&size=0", config.Configs.Elasticsearch.EsServer, hash)
+	res, err := http.Get(addr)
+	if err != nil {
+		return false, err
+	}
+	b, _ := io.ReadAll(res.Body)
+	var sr searchResult
+	json.Unmarshal(b, &sr)
+	return sr.Hits.Total.Value != 0, nil
+}
+
+func SearchHashSize(hash string) (size int64, err error) {
+	addr := fmt.Sprintf("http://%s/metadata/_search?q=hash:%s&size=1", config.Configs.Elasticsearch.EsServer, hash)
+	res, err := http.Get(addr)
+	if err != nil {
+		return 0, err
+	}
+	if res.StatusCode != http.StatusOK {
+		err := fmt.Errorf("failed to search hash size: %d", res.StatusCode)
+		return 0, err
+	}
+	result, _ := io.ReadAll(res.Body)
+	var sr searchResult
+	json.Unmarshal(result, &sr)
+	if len(sr.Hits.Hits) != 0 {
+		size = sr.Hits.Hits[0].Source.Size
+	}
+	return size, nil
+}
